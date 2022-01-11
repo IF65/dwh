@@ -1,18 +1,24 @@
 {
-    "archivi": {
-        "host": "",
-        "user": "",
-        "password": ""
-    },
-    "quadrature": {
-        "host": "",
-        "user": "",
-        "password": ""
-    },
-    "cm": {
-        "host": "",
-        "user": "",
-        "password": ""
-    },
-    "exportFolder": ""
+  "archivi": {
+    "host": "localhost",
+    "user": "root",
+    "password": "mela"
+  },
+  "quadrature": {
+    "host": "10.11.14.128",
+    "user": "root",
+    "password": "mela"
+  },
+  "cm": {
+    "host": "localhost",
+    "user": "root",
+    "password": "mela"
+  },
+  "anagdafi": {
+    "host": "localhost",
+    "user": "root",
+    "password": "mela"
+  },
+  "exportFolder": "/Users/if65/Desktop/progetti/dwh/test/dc",
+  "debug": "true"
 }
