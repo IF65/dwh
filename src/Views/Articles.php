@@ -20,9 +20,9 @@ class Articles
 		try {
 			$config = Config::Init();
 
-			$this->user = $config->getSetup(Config::DB_ARCHIVI, 'user');
-			$this->password = $config->getSetup(Config::DB_ARCHIVI, 'password');
-			$this->host = $config->getSetup(Config::DB_ARCHIVI, 'host');
+			$this->user = $config->archivi['user'];
+			$this->password = $config->archivi['password'];
+			$this->host = $config->archivi['host'];
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 

@@ -19,9 +19,9 @@ class Anagdafi
 		try {
 			$config = Config::Init();
 
-			$this->user = $config->getSetup(Config::DB_ANAGDAFI, 'user');
-			$this->password = $config->getSetup(Config::DB_ANAGDAFI, 'password');
-			$this->host = $config->getSetup(Config::DB_ANAGDAFI, 'host');
+			$this->user = $config->anagdafi['user'];
+			$this->password = $config->anagdafi['password'];
+			$this->host = $config->anagdafi['host'];
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 

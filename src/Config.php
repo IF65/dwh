@@ -1,49 +1,45 @@
 <?php
+
 namespace If65;
 
 class Config
 {
 	static $init = null;
 
-	const DB_ARCHIVI = 'archivi';
-	const DB_QUADRATURE = 'quadrature';
-	const DB_CM = 'cm';
-	const DB_ANAGDAFI = 'anagdafi';
-
-	const EXPORTFOLDER = 'exportFolder';
-
-	private const FILENAME = 'config';
-
-	private $setup = [
-		self::DB_ARCHIVI => [
-			'host' => '',
-			'user' => '',
-			'password' => '',
-		],
-		self::DB_QUADRATURE => [
-			'host' => '',
-			'user' => '',
-			'password' => ''
-		],
-		self::DB_CM => [
-			'host' => '',
-			'user' => '',
-			'password' => ''
-		],
-		self::DB_ANAGDAFI => [
-			'host' => '',
-			'user' => '',
-			'password' => ''
-		],
-		'exportFolder' => ''
+	public $archivi = [
+		"host" => "",
+		"user" => "",
+		"password" => ""
 	];
+	public $quadrature = [
+		"host" => "",
+		"user" => "",
+		"password" => ""
+	];
+	public $cm = [
+		"host" => "",
+		"user" => "",
+		"password" => ""
+	];
+	public $anagdafi = [
+		"host" => "",
+		"user" => "",
+		"password" => ""
+	];
+	public $exportFolder;
+	public $debug;
 
-	/** Private to implement singleton pattern */
-	private function __construct() {
+	private const FILENAME = 'config.json';
+
+	/** singleton */
+	private function __construct()
+	{
+		$this->debug = true;
+		$this->exportFolder = dirname(__DIR__, 1) . DIRECTORY_SEPARATOR . "test" . DIRECTORY_SEPARATOR . "dc";
+
 		$this::LoadSetup();
 	}
 
-	/** @return Config */
 	public static function Init()
 	{
 		return static::$init = (
@@ -52,39 +48,45 @@ class Config
 	}
 
 	/**
-	 * scrive la configurazione corrente su disco e se non esiste crea un file di bkp da utilizzare come modello
-	 */
-	private function writeSetup()
-	{
-		$fileName = __DIR__ . DIRECTORY_SEPARATOR . self::FILENAME;
-		if (! file_exists( $fileName . '.cfg')) {
-			file_put_contents($fileName . '.cfg', json_encode($this->setup, JSON_PRETTY_PRINT));
-			file_put_contents($fileName . '.bkp', json_encode($this->setup, JSON_PRETTY_PRINT));
-		}
-	}
-
-	/**
 	 * carica la configurazione corrente
 	 */
 	private function loadSetup()
 	{
-		$fileName = __DIR__ . DIRECTORY_SEPARATOR . self::FILENAME;
-		if ( file_exists( $fileName . '.cfg')) {
-			$this->setup = json_decode(file_get_contents($fileName . '.cfg'), true);
-		} else {
-			/** nel caso non ci sia il file di configurazione ne scrive uno standard */
-			$this->writeSetup();
+		$fileName = dirname(__DIR__, 1) . DIRECTORY_SEPARATOR . self::FILENAME;
+		if (file_exists($fileName)) {
+			$setup = json_decode(file_get_contents($fileName), true);
+
+			if (key_exists('archivi', $setup)) {
+				$this->archivi['host'] = $setup['archivi']['host'];
+				$this->archivi['user'] = $setup['archivi']['user'];
+				$this->archivi['password'] = $setup['archivi']['password'];
+			}
+
+			if (key_exists('cm', $setup)) {
+				$this->cm['host'] = $setup['cm']['host'];
+				$this->cm['user'] = $setup['cm']['user'];
+				$this->cm['password'] = $setup['cm']['password'];
+			}
+
+			if (key_exists('quadrature', $setup)) {
+				$this->quadrature['host'] = $setup['quadrature']['host'];
+				$this->quadrature['user'] = $setup['quadrature']['user'];
+				$this->quadrature['password'] = $setup['quadrature']['password'];
+			}
+
+			if (key_exists('anagdafi', $setup)) {
+				$this->anagdafi['host'] = $setup['anagdafi']['host'];
+				$this->anagdafi['user'] = $setup['anagdafi']['user'];
+				$this->anagdafi['password'] = $setup['anagdafi']['password'];
+			}
+
+			if (key_exists('exportFolder', $setup)) {
+				$this->exportFolder=$setup['exportFolder'];
+			}
+
+			if (key_exists('debug', $setup)) {
+				$this->debug=$setup['debug'];
+			}
 		}
 	}
-
-	public function getSetup(string $type, string $selector = ''): string {
-		if ($type == self::DB_ARCHIVI || $type == self::DB_CM || $type == self::DB_QUADRATURE || $type == self::DB_ANAGDAFI) {
-			return $this->setup[$type][$selector];
-		} if ($type == self::EXPORTFOLDER) {
-			return $this->setup[$type];
-		} else {
-			return '';
-		}
-	}
-
 }

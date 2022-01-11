@@ -8,9 +8,9 @@ function getRawData(string $store, string $ddate): array
 	try {
 		$config = Config::Init();
 
-		$user = $config->getSetup(Config::DB_QUADRATURE, 'user');
-		$password = $config->getSetup(Config::DB_QUADRATURE, 'password');
-		$host = $config->getSetup(Config::DB_QUADRATURE, 'host');
+		$user = $config->quadrature['user'];
+		$password = $config->quadrature['password'];
+		$host = $config->quadrature['host'];
 
 		$connectionString = sprintf("mysql:host=%s", $host);
 
@@ -87,35 +87,37 @@ function getData(string $store, string $ddate): string
 		/** VENDITE */
 		$sales = [];
 		foreach ($transaction as $row) {
-			if ($row['recordtype'] == 'S' and $row['totalamount'] != 0.00) {
-				$quantity = $row['quantity'];
-				$soldByWeight = False;
-				$weight = 0;
-				if (preg_match('/^.{5}\./', $row['data'])) {
-					$quantity = 1;
-					$soldByWeight = True;
-					$weight = $row['quantity'] * 1;
+			if ($row['recordtype'] == 'S' /*and $row['totalamount'] != 0.00*/) {
+				if (!preg_match('/^(998011|977011|998012)\d{3}(\d{2})\d{2}$/', $row['barcode'])) {
+					$quantity = $row['quantity'];
+					$soldByWeight = False;
+					$weight = 0;
+					if (preg_match('/^.{5}\./', $row['data'])) {
+						$quantity = 1;
+						$soldByWeight = True;
+						$weight = $row['quantity'] * 1;
+					}
+					$sales[] = [
+						'transstep' => $row['transstep'] * 1,
+						'ttime' => $row['ttime'],
+						'recordcode1' => $row['recordcode1'],
+						'recordcode2' => $row['recordcode2'],
+						'recordcode3' => $row['recordcode3'],
+						'department' => str_pad($row['userno'], 4, '0', STR_PAD_LEFT),
+						'saleid' => $row['saleid'],
+						'taxcode' => $row['taxcode'],
+						'amount' => $row['amount'] * 1,
+						'totalamount' => $row['totalamount'] * 1,
+						'totalnetamount' => $row['totalamount'] * 1, /* usato nel calcolo delle ripartizioni*/
+						'totaltaxableamount' => $row['totaltaxableamount'] * 1,
+						'taxamount' => $row['taxamount'] * 1,
+						'barcode' => $row['barcode'],
+						'quantity' => $quantity * 1,
+						'soldByWeight' => $soldByWeight,
+						'weight' => $weight,
+						'benefits' => []
+					];
 				}
-				$sales[] = [
-					'transstep' => $row['transstep'] * 1,
-					'ttime' => $row['ttime'],
-					'recordcode1' => $row['recordcode1'],
-					'recordcode2' => $row['recordcode2'],
-					'recordcode3' => $row['recordcode3'],
-					'department' => str_pad($row['userno'], 4, '0', STR_PAD_LEFT),
-					'saleid' => $row['saleid'],
-					'taxcode' => $row['taxcode'],
-					'amount' => $row['amount'] * 1,
-					'totalamount' => $row['totalamount'] * 1,
-					'totalnetamount' => $row['totalamount'] * 1, /* usato nel calcolo delle ripartizioni*/
-					'totaltaxableamount' => $row['totaltaxableamount'] * 1,
-					'taxamount' => $row['taxamount'] * 1,
-					'barcode' => $row['barcode'],
-					'quantity' => $quantity * 1,
-					'soldByWeight' => $soldByWeight,
-					'weight' => $weight,
-					'benefits' => []
-				];
 			}
 		}
 
@@ -735,6 +737,46 @@ function getData(string $store, string $ddate): string
 								$sales[$i]['benefits']['0022'] = [];
 							}
 							$sales[$i]['benefits']['0022'][] = [
+								'points' => $point['points'],
+								'promotionNumber' => $point['promotionNumber']
+							];
+							$lastUsedTransstep = $sales[$i]['transstep'];
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		/** 0023 - PREMI COLLECTION */
+		if (true) {
+			$points = [];
+			for ($i = count($transaction) - 2; $i >= 0; $i--) {
+				if ($transaction[$i]['recordtype'] == 'G' && $transaction[$i]['recordcode2'] == '3' && $transaction[$i + 1]['recordtype'] == 'm') {
+					if (preg_match('/:0023\-(.*)\s+$/', $transaction[$i + 1]['misc'], $matches)) {
+						$point = [
+							'type' => '0023',
+							'amount' => 0,
+							'points' => $transaction[$i]['totalpoints'] * 1,
+							'quantity' => $transaction[$i]['quantity'] * 1,
+							'barcode' => $transaction[$i]['barcode'],
+							'promotionNumber' => $matches[1],
+							'transstep' => $transaction[$i]['transstep'] * 1
+						];
+						$points[] = $point;
+					}
+				}
+			}
+
+			foreach ($points as $id_point => $point) {
+				$lastUsedTransstep = 10000;
+				for ($i = count($sales) - 1; $i >= 0; $i--) {
+					if ($sales[$i]['barcode'] == $point['barcode'] && $sales[$i]['transstep'] < $point['transstep']) {
+						if (!key_exists('0023', $sales[$i]['benefits']) && ($sales[$i]['transstep'] < $lastUsedTransstep)) {
+							if ($sales[$i]['quantity'] == $point['quantity']) {
+								$sales[$i]['benefits']['0023'] = [];
+							}
+							$sales[$i]['benefits']['0023'][] = [
 								'points' => $point['points'],
 								'promotionNumber' => $point['promotionNumber']
 							];

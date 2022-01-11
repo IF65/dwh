@@ -44,9 +44,9 @@ class Promotions
 		try {
 			$config = Config::Init();
 
-			$this->user = $config->getSetup(Config::DB_CM, 'user');
-			$this->password = $config->getSetup(Config::DB_CM, 'password');
-			$this->host = $config->getSetup(Config::DB_CM, 'host');
+			$this->user = $config->cm['user'];
+			$this->password = $config->cm['password'];
+			$this->host = $config->cm['host'];
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 
@@ -107,31 +107,12 @@ class Promotions
 		$codes = [
 			'campaignCode' => '10000',
 			'promotionCode' => '990000000',
-			'movementCode' => '00'];
+			'movementCode' => '00'
+		];
 
-		if ($type == 'TAP') {
-			foreach ($this->promotions['XP'] as $promotion) {
-				if ($promotion['codice_articolo'] == $request['articleCode']) {
-					$codes = [
-						'campaignCode' => $promotion['codice_campagna'],
-						'promotionCode' => $promotion['codice_promozione'],
-						'movementCode' => '50'];
-					break;
-				}
-			}
-			foreach ($this->promotions['MP'] as $promotion) {
-				if ($promotion['codice_articolo'] == $request['articleCode']) {
-					$codes = [
-						'campaignCode' => $promotion['codice_campagna'],
-						'promotionCode' => $promotion['codice_promozione'],
-						'movementCode' => '13'];
-					break;
-				}
-			}
-		}
 		if ($type == '0492') {
 			foreach ($this->promotions['MP'] as $promotion) {
-				if ($promotion['parametro_01'] == ($request['percentage'] * 100) && $promotion['parametro_02'] == $request['promotionCode']) {
+				if ($promotion['parametro_01'] == ($request['percentage']) && $promotion['parametro_02'] == $request['promotionCode']) {
 					$codes = [
 						'campaignCode' => $promotion['codice_campagna'],
 						'promotionCode' => $promotion['codice_promozione'],
@@ -205,6 +186,17 @@ class Promotions
 						'campaignCode' => $promotion['codice_campagna'],
 						'promotionCode' => $promotion['codice_promozione'],
 						'movementCode' => '89'];
+					break;
+				}
+			}
+		}
+		if ($type == '0023') {
+			foreach ($this->promotions['BP'] as $promotion) {
+				if ($promotion['codice_articolo'] == $request['articleCode']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '90'];
 					break;
 				}
 			}
