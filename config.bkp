@@ -1,0 +1,18 @@
+{
+    "archivi": {
+        "host": "",
+        "user": "",
+        "password": ""
+    },
+    "quadrature": {
+        "host": "",
+        "user": "",
+        "password": ""
+    },
+    "cm": {
+        "host": "",
+        "user": "",
+        "password": ""
+    },
+    "exportFolder": ""
+}

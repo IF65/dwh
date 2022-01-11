@@ -1,0 +1,13 @@
+{
+    "name": "if65/dwh",
+    "require": {
+        "ulrichsg/getopt-php": "^3.4",
+        "guzzlehttp/guzzle": "^7.3"
+    },
+    "authors": [
+        {
+            "name": "Marco Gnecchi",
+            "email": "marco.gnecchi@if65.it"
+        }
+    ]
+}
