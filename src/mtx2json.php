@@ -25,7 +25,7 @@ function getRawData(string $store, string $ddate): array
 	       			quantita quantity, totalpoints, paymentform, actioncode  
 				from mtx.idc 
 				where store = :store and ddate = :ddate and recordcode1 = '1'  and binary recordtype not in ('f','b','u','X')
-				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '003' and trans = 6637*/
+				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '003' and trans = 4504*/
 				order by store, ddate, reg, trans, transstep";
 		$h_query = $pdo->prepare($stmt);
 		$h_query->execute([':store' => $store, ':ddate' => $ddate]);
@@ -188,11 +188,32 @@ function getData(string $store, string $ddate): string
 							if (!key_exists('0055', $sales[$i]['benefits'])) {
 								$sales[$i]['benefits']['0055'] = [];
 							}
-							if ($sales[$i]['quantity'] == $discount['details'][$k]['quantity'] && ($sales[$i]['transstep'] < $lastUsedTransstep)) {
+							/*if ($sales[$i]['quantity'] == $discount['details'][$k]['quantity'] && ($sales[$i]['transstep'] < $lastUsedTransstep)) {
 								$sales[$i]['benefits']['0055'][] = [
 									'amount' => $discount['details'][$k]['share'],
 									'promotionNumber' => $discount['promotionNumber']
 								];
+								$lastUsedTransstep = $sales[$i]['transstep'];
+								break;
+							}*/
+							$usedQuantity = 0;
+							foreach ($sales[$i]['benefits']['0055'] as $currentBenefit) {
+								$usedQuantity += $currentBenefit['quantity'];
+							}
+
+							if (($sales[$i]['quantity'] - $usedQuantity) >= $discount['details'][$k]['quantity'] && ($sales[$i]['transstep'] <= $lastUsedTransstep)) {
+								if (count($sales[$i]['benefits']['0055'])) {
+									$tempAmount = $sales[$i]['benefits']['0055'][0]['amount'];
+									$sales[$i]['benefits']['0055'][0]['amount'] = $tempAmount + $discount['details'][$k]['share'];
+									$tempQuantity = $sales[$i]['benefits']['0055'][0]['quantity'];
+									$sales[$i]['benefits']['0055'][0]['quantity'] = $tempQuantity + $discount['details'][$k]['quantity'];
+								} else {
+									$sales[$i]['benefits']['0055'][] = [
+										'amount' => $discount['details'][$k]['share'],
+										'promotionNumber' => $discount['promotionNumber'],
+										'quantity' => $discount['details'][$k]['quantity']
+									];
+								}
 								$lastUsedTransstep = $sales[$i]['transstep'];
 								break;
 							}
@@ -477,7 +498,8 @@ function getData(string $store, string $ddate): string
 		if (true) {
 			$discounts = [];
 			for ($i = count($transaction) - 2; $i >= 0; $i--) {
-				if ($transaction[$i]['recordtype'] == 'C' && $transaction[$i]['recordcode3'] == '2' && $transaction[$i + 1]['recordtype'] != 'G' && $transaction[$i + 2]['recordtype'] != 'm') {
+				if ($transaction[$i]['recordtype'] == 'C' && $transaction[$i]['recordcode3'] == '2' && $transaction[$i + 1]['recordtype'] != 'G' && ($transaction[$i + 2]['recordtype'] != 'm' ||
+						($transaction[$i + 2]['recordtype'] == 'm' && !preg_match("/:0027/", $transaction[$i + 2]['misc'])))) {
 					$discount = [
 						'type' => '0493',
 						'amount' => $transaction[$i]['totalamount'] * 1,

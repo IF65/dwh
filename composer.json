@@ -1,8 +1,16 @@
 {
     "name": "if65/dwh",
     "require": {
-        "ulrichsg/getopt-php": "^3.4",
+        "ulrichsg/getopt-php": "^v4.0.1",
         "guzzlehttp/guzzle": "^7.3"
+    },
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9"
     },
     "authors": [
         {

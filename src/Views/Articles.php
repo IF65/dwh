@@ -45,7 +45,7 @@ class Articles
 
 			$this->articlesListedByBarcode = [];
 			foreach ($result as $article) {
-				$this->articlesListedByBarcode[$article['barcode']] = [
+				$this->articlesListedByBarcode[$article['barcode'] . ''] = [
 					'code' => $article['code'],
 					'department' => $article['department'],
 					'description' => $article['description'],
@@ -86,6 +86,8 @@ class Articles
 		}
 		if (key_exists($barcode, $this->articlesListedByBarcode)) {
 			return $this->articlesListedByBarcode[$barcode]['code'];
+		} elseif (key_exists(ltrim($barcode, '0'), $this->articlesListedByBarcode)) {
+			return $this->articlesListedByBarcode[ltrim($barcode, '0')]['code'];
 		} else {
 			if (key_exists(substr($barcode, 0, 7), $this->articlesListedByBarcode)) {
 				return $this->articlesListedByBarcode[substr($barcode, 0, 7)]['code'];

@@ -100,40 +100,48 @@ foreach ($dc as $id => $transaction) {
 		);
 
 		foreach ($transaction['sales'] as $article) {
-			$articleCode = $articles->getArticleCode($article['barcode']);
+			$articleCode = trim($articles->getArticleCode($article['barcode']));
 			$tapDiscount = 0;
 
 			$tap = false;
-
 			if (key_exists($articleCode, $anagdafi->articlesListedByCode)) {
-				if ($anagdafi->articlesListedByCode[$articleCode]['type'] == 'TAP' &&
-					$anagdafi->articlesListedByCode[$articleCode]['locked'] == 'L') {
+				if ($anagdafi->articlesListedByCode[$articleCode]['type'] == 'TAP') {
 					$tap = true;
 
 					$salePrice = $anagdafi->articlesListedByCode[$articleCode]['salePrice'];
-					$tapDiscount = $salePrice * $article['quantity'] - $article['totaltaxableamount'];
+					$tapDiscount = round($salePrice * $article['quantity'] - $article['totalamount'], 2)/*$article['totaltaxableamount']*/
+					;
+					if ($article['soldByWeight']) {
+						$salePrice = round($salePrice * $article['weight'], 2);
+						$tapDiscount = round($salePrice - $article['totalamount'], 2);
+					}
+
+					if ($tapDiscount < 0) {
+						$salePrice -= $tapDiscount;
+						$tapDiscount = 0;
+					}
 					// cerco il codice e la campagna della promozione
 					$details = $promotions->getPromotionCodes(['articleCode' => $articleCode] + ['type' => 'TAP']);
-					if (count($details)) {
+					if ($details['promotionCode'] != '990000000') {
 						$codiceCampagnaSconto = $details['campaignCode'];
 						$codicePromozioniSconto = $details['promotionCode'];
 						$movementCode = $details['movementCode'];
 					} else {
-						$tapMancanti[] = $articleCode;
+						$details = $promotions->getPromotionCodes(['type' => 'LX']);
+						$codiceCampagnaSconto = $details['campaignCode'];
+						$codicePromozioniSconto = $details['promotionCode'];
+						$movementCode = $details['movementCode'];
 					}
 				}
 			}
 
-			/** in fase di test TAP disabilitate */
-			$tap = false;
 			if ($tap) {
-
 				$righe[] = sprintf('%08s%08s%-5s1001%13s%1s%4s%09d%1d%09d%9s%9s%02d%-10s%13s%1d   ',
 					"20$anno$mese$giorno",
 					++$numRec,
 					$store,
 					($article['soldByWeight'] == True) ? substr($article['barcode'], 0, 7) : $article['barcode'],
-					'N',
+					($articleCode != '') ? 'N' : 'Y',
 					$articles->getArticleDepartmentByBarcode($article['barcode']),
 					round($salePrice * 100 * $article['quantity'], 0),
 					($article['soldByWeight'] == True) ? 1 : 0,
@@ -152,7 +160,7 @@ foreach ($dc as $id => $transaction) {
 					$store,
 					$movementCode,
 					($article['soldByWeight'] == True) ? substr($article['barcode'], 0, 7) : $article['barcode'],
-					'N',
+					($articleCode != '') ? 'N' : 'Y',
 					$articles->getArticleDepartmentByBarcode($article['barcode']),
 					round(abs($tapDiscount) * 100, 0),
 					0,
@@ -170,7 +178,7 @@ foreach ($dc as $id => $transaction) {
 					++$numRec,
 					$store,
 					($article['soldByWeight'] == True) ? substr($article['barcode'], 0, 7) : $article['barcode'],
-					'N',
+					($articleCode != '') ? 'N' : 'Y',
 					$articles->getArticleDepartmentByBarcode($article['barcode']),
 					round($article['totalamount'] * 100, 0),
 					($article['soldByWeight'] == True) ? 1 : 0,
