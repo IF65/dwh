@@ -99,7 +99,6 @@ class Promotions
 				}
 				$this->promotions[$row['tipo']][] = $row;
 			}
-
 		} catch (PDOException $e) {
 			echo "Errore: " . $e->getMessage();
 			die();

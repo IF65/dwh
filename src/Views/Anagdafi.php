@@ -13,15 +13,23 @@ class Anagdafi
 	private $password = '';
 	private $host = '';
 
+	private $config;
+
 	public $articlesListedByCode = [];
 
 	public function __construct() {
 		try {
-			$config = Config::Init();
+			$this->config = Config::Init();
 
-			$this->user = $config->anagdafi['user'];
-			$this->password = $config->anagdafi['password'];
-			$this->host = $config->anagdafi['host'];
+			if ($this->config->oldDwhType) {
+				$this->user = $this->config->cm_old['user'];
+				$this->password = $this->config->cm_old['password'];
+				$this->host = $this->config->cm_old['host'];
+			} else {
+				$this->user = $this->config->cm['user'];
+				$this->password = $this->config->cm['password'];
+				$this->host = $this->config->cm['host'];
+			}
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 
