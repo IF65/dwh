@@ -342,6 +342,17 @@ class Promotions
 				}
 			}
 		}
+		if ($type == '0055') {
+			foreach ($this->promotions['MP'] as $promotion) {
+				if ($promotion['parametro_01'] == 30 && $promotion['parametro_02'] == 0) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '13'];
+					break;
+				}
+			}
+		}
 		if ($type == '0493') {
 			$found = false;
 			if (key_exists('PF', $this->promotions)) {

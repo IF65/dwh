@@ -86,7 +86,7 @@ foreach ($dc as $id => $transaction) {
 	}
 }
 
-if ($wrongTransactionCount <= 10) {
+if ($wrongTransactionCount <= 100) {
 	$righe = [];
 	$numRec = 0;
 	ksort($dc, SORT_STRING);
@@ -356,15 +356,17 @@ if ($wrongTransactionCount <= 10) {
 				}
 
 				if (preg_match('/^.{23}77/', $riga) && $rigaBase_0061 != '') {
-					if (preg_match('/^(.{23}51).{27}(.*)$/', $rigaBase_0061, $matches)) {
-						$righeAccorpate[] = sprintf('%s%18s%09d%s', $matches[1], 'N0000', $totalizzatore_0061, $matches[2]);
+					if (preg_match('/^(.{23})51.{27}(.*)$/', $rigaBase_0061, $matches)) {
+						$righeAccorpate[] = sprintf('%s%s', $matches[1], '010000000000000N00010000000000000000000                  000000000000             0   ');
+						$righeAccorpate[] = sprintf('%s51%18s%09d%s', $matches[1], 'N0000', $totalizzatore_0061, $matches[2]);
 					}
 					$totalizzatore_0061 = 0;
 					$rigaBase_0061 = '';
 				}
 				if (preg_match('/^.{23}20/', $riga) && $rigaBase_0061 != '') {
-					if (preg_match('/^(.{23}51).{27}(.*)$/', $rigaBase_0061, $matches)) {
-						$righeAccorpate[] = sprintf('%s%18s%09d%s', $matches[1], 'N0000', $totalizzatore_0061, $matches[2]);
+					if (preg_match('/^(.{23})51.{27}(.*)$/', $rigaBase_0061, $matches)) {
+						$righeAccorpate[] = sprintf('%s%s', $matches[1], '010000000000000N00010000000000000000000                  000000000000             0   ');
+						$righeAccorpate[] = sprintf('%s51%18s%09d%s', $matches[1], 'N0000', $totalizzatore_0061, $matches[2]);
 					}
 					$totalizzatore_0061 = 0;
 					$rigaBase_0061 = '';
@@ -392,7 +394,7 @@ if ($wrongTransactionCount <= 10) {
 		file_put_contents($config->exportFolder . DIRECTORY_SEPARATOR . 'tap.txt', implode("\n", $tapMancanti));
 
 		$fileName = "DC20$anno$mese$giorno" . '0' . $store . '001.DAT';
-		file_put_contents($config->exportFolder . DIRECTORY_SEPARATOR . $fileName, implode("\n", $righe) . "\n");
+		file_put_contents($config->exportFolder . DIRECTORY_SEPARATOR . $fileName, implode("\r\n", $righe) . "\r\n");
 
 		$fileName = "DC20$anno$mese$giorno" . '0' . $store . '001.CTL';
 		file_put_contents($config->exportFolder . DIRECTORY_SEPARATOR . $fileName, '');

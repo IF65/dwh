@@ -25,7 +25,7 @@ function getRawData(string $store, string $ddate): array
 	       			quantita quantity, totalpoints, paymentform, actioncode  
 				from mtx.idc 
 				where store = :store and ddate = :ddate and recordcode1 = '1'  and binary recordtype not in ('f','b','u','X')
-				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '022' and trans = 5145*/
+				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '001' and trans = 758*/
 				order by store, ddate, reg, trans, transstep";
 		$h_query = $pdo->prepare($stmt);
 		$h_query->execute([':store' => $store, ':ddate' => $ddate]);
@@ -905,6 +905,17 @@ function getData(string $store, string $ddate): string
 		/** 0061 - SCONTO TRANSAZIONALE CON RECORD M */
 		$discounts = [];
 		for ($i = count($transaction) - 2; $i >= 0; $i--) {
+			if ($transaction[$i]['recordtype'] == 'm' && $transaction[$i + 1]['recordtype'] == 'D') {
+				if (preg_match('/:0061\-(.*)\s+$/', $transaction[$i]['misc'])) {
+					if ($transaction[$i + 1]['recordcode2'] == '9' && $transaction[$i + 1]['recordcode3'] == '8') {
+						$toSwap = $transaction[$i + 1];
+						$transaction[$i + 1] = $transaction[$i];
+						$transaction[$i] = $toSwap;
+					}
+				}
+			}
+		}
+		for ($i = count($transaction) - 2; $i >= 0; $i--) {
 			if ($transaction[$i]['recordtype'] == 'D' && $transaction[$i + 1]['recordtype'] == 'm') {
 				if (preg_match('/:0061\-(.*)\s+$/', $transaction[$i + 1]['misc'], $matches)) {
 					$discount = [
@@ -981,7 +992,6 @@ function getData(string $store, string $ddate): string
 				}
 			}
 		}
-
 
 
 		/** 0034 - PUNTI TRANSAZIONE */
