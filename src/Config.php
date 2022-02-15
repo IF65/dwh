@@ -100,6 +100,10 @@ class Config
 			if (key_exists('debug', $setup)) {
 				$this->debug=$setup['debug'];
 			}
+
+			if (key_exists('oldDwhType', $setup)) {
+				$this->oldDwhType=$setup['oldDwhType'];
+			}
 		}
 	}
 }
