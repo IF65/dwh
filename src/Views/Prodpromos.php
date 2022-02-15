@@ -225,6 +225,10 @@ class Prodpromos
 		}
 		if ($type == '0481' && $this->storeType == '2') {
 			foreach ($this->promotions['MP'] as $promotion) {
+				if ($request['benefitBarcode'] == "" || !key_exists($request['benefitBarcode'], $this->barcodeMenu)) {
+					$request['benefitBarcode'] = "9770110000054";
+				}
+
 				if ($this->barcodeMenu[$request['benefitBarcode']] == $promotion['codice_articolo']) {
 					$codes = [
 						'campaignCode' => $promotion['codice_campagna'],
@@ -234,6 +238,28 @@ class Prodpromos
 				}
 			}
 		}
+		if ($type == '0061') {
+			if ($request['category'] == 1 || $this->storeType == 2) {
+				foreach ($this->promotions['MT'] as $promotion) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '51'];
+					break;
+				}
+			} else {
+				foreach ($this->promotions['MT'] as $promotion) {
+					if ($request['category'] == $promotion['parametro_02']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '51'];
+						break;
+					}
+				}
+			}
+		}
+
 		return $codes;
 	}
 }

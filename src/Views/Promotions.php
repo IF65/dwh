@@ -13,43 +13,49 @@ class Promotions
 	private $host = '';
 	private $storeType = '0'; // 0=asar, 1=cash, 2=tcpos
 
-	private $barcodeMenu = [
-		"990012573" => 9891094, //01-MENU 1 2021
-		"990012574" => 9891101, //02-MENU 2 2021
-		"990011667" => 9891003, //03-MENU KIDS 2021
-		"990011668" => 9891012, //04-MENU HAMBURGER 2021
-		"990011669" => 9891021, //05-MENU CLASSICO 2021
-		"990012575" => 9891110, //06-MENU 6 2021
-		"990012576" => 9891129, //07-MENU 7 2021
-		"990011670" => 9891058, //08-MENU PRIMO 2021
-		"990012577" => 9891138, //09-MENU 9 2021
-		"990012578" => 9891147, //10-MENU 10 2021
-		"990011677" => 9891085, //11-MENU KIDS 2021
-		"990011671" => 9891030, //12-MENU SPECIALE 2021
-		"990011672" => 9891049, //13-MENU GOURMET 2021
-		"990011673" => 9891067, //14-MENU SECONDO DI CARNE 2021
-		"990011674" => 9891076, //15-MENU SECONDO DI PESCE 2021
-		"990011675" => 9891156, //16-MENU ARMONIA 2021
-		"990011676" => 9891165, //17-MENU EQULIBRIO 2021
-		"990011678" => 9891174, //18-MENU ARMONIA 2021
-		"990011679" => 9891183, //19-MENU EQUILIBRIO 2021
-		"990012579" => 9891192, //20-MENU 20 2021
-	];
+	private $config;
 
+	private $barcodeMenu = [
+		"9770110000016" => "9891094", //01-MENU 1 2021
+		"9770110000023" => "9891101", //02-MENU 2 2021
+		"9770110000030" => "9891003", //03-MENU KIDS 2021
+		"9770110000047" => "9891012", //04-MENU HAMBURGER 2021
+		"9770110000054" => "9891021", //05-MENU CLASSICO 2021
+		"9770110000061" => "9891110", //06-MENU 6 2021
+		"9770110000078" => "9891129", //07-MENU 7 2021
+		"9770110000085" => "9891058", //08-MENU PRIMO 2021
+		"9770110000092" => "9891138", //09-MENU 9 2021
+		"9770110000108" => "9891147", //10-MENU 10 2021
+		"9770110000115" => "9891085", //11-MENU KIDS 2021
+		"9770110000122" => "9891030", //12-MENU SPECIALE 2021
+		"9770110000139" => "9891049", //13-MENU GOURMET 2021
+		"9770110000146" => "9891067", //14-MENU SECONDO DI CARNE 2021
+		"9770110000153" => "9891076", //15-MENU SECONDO DI PESCE 2021
+		"9770110000160" => "9891156", //16-MENU ARMONIA 2021
+		"9770110000177" => "9891165", //17-MENU EQULIBRIO 2021
+		"9770110000184" => "9891174", //18-MENU ARMONIA 2021
+		"9770110000191" => "9891183", //19-MENU EQUILIBRIO 2021
+		"9770110000207" => "9891192", //20-MENU 20 2021
+	];
 
 	private $promotions;
 
 	public function __construct(string $store, string $ddate)
 	{
-		try {
-			$config = Config::Init();
+		$this->config = Config::Init();
 
-			$this->user = $config->cm['user'];
-			$this->password = $config->cm['password'];
-			$this->host = $config->cm['host'];
+		try {
+			if ($this->config->oldDwhType) {
+				$this->user = $this->config->cm_old['user'];
+				$this->password = $this->config->cm_old['password'];
+				$this->host = $this->config->cm_old['host'];
+			} else {
+				$this->user = $this->config->cm['user'];
+				$this->password = $this->config->cm['password'];
+				$this->host = $this->config->cm['host'];
+			}
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
-
 			$this->pdo = new PDO($connectionString, $this->user, $this->password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
 			$stmt = "	select codice store, 0 storeType from archivi.negozi where societa in (02,05)
@@ -100,7 +106,16 @@ class Promotions
 		}
 	}
 
-	function getPromotionCodes(array $request): array
+	public function getPromotionCodes(array $request): array
+	{
+		if ($this->config->oldDwhType) {
+			return $this->getPromotionCodesOld($request);
+		} else {
+			return $this->getPromotionCodesNew($request);
+		}
+	}
+
+	private function getPromotionCodesNew(array $request): array
 	{
 		$type = $request['type'];
 
@@ -284,14 +299,191 @@ class Promotions
 			}
 		}*/
 		if ($type == '0061') {
-			foreach ($this->promotions['ED'] as $promotion) {
+			if ($request['category'] == 1) {
+				foreach ($this->promotions['ED'] as $promotion) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '55'];
+					break;
+				}
+			} else {
+				foreach ($this->promotions['MT'] as $promotion) {
+					if ($request['category'] == $promotion['parametro_02']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '51'];
+						break;
+					}
+				}
+			}
+		}
+		return $codes;
+	}
+
+	private function getPromotionCodesOld(array $request): array
+	{
+		$type = $request['type'];
+
+		$codes = [
+			'campaignCode' => '10000',
+			'promotionCode' => '990000000',
+			'movementCode' => '00'
+		];
+
+		if ($type == '0492') {
+			foreach ($this->promotions['MP'] as $promotion) {
+				if ($promotion['parametro_01'] == ($request['percentage']) && $promotion['parametro_02'] == $request['promotionCode']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '13'];
+					break;
+				}
+			}
+		}
+		if ($type == '0493') {
+			$found = false;
+			if (key_exists('PF', $this->promotions)) {
+				foreach ($this->promotions['PF'] as $promotion) {
+					if ($promotion['codice_articolo'] == $request['articleCode']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '91'];
+						$found = true;
+						break;
+					}
+				}
+			}
+			if (!$found and key_exists('AP', $this->promotions)) {
+				foreach ($this->promotions['AP'] as $promotion) {
+					if ($promotion['codice_articolo'] == $request['articleCode']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '91'];
+						break;
+					}
+				}
+			}
+		}
+		if ($type == '0503') {
+			foreach ($this->promotions['TV'] as $promotion) {
 				$codes = [
 					'campaignCode' => $promotion['codice_campagna'],
 					'promotionCode' => $promotion['codice_promozione'],
-					'movementCode' => '55'];
+					'movementCode' => '86'];
 				break;
 			}
 		}
+		if ($type == '0027') {
+			if (!key_exists('points', $request)) {
+				foreach ($this->promotions['BM'] as $promotion) {
+					if ($promotion['codice_articolo'] == $request['articleCode']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '94'];
+						break;
+					}
+				}
+			} else {
+				foreach ($this->promotions['BM'] as $promotion) {
+					if ($promotion['codice_articolo'] == $request['articleCode']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '93'];
+						break;
+					}
+				}
+			}
+		}
+		if ($type == '0022') {
+			foreach ($this->promotions['BJ'] as $promotion) {
+				if ($promotion['codice_articolo'] == $request['articleCode']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '89'];
+					break;
+				}
+			}
+		}
+		if ($type == '0023') {
+			foreach ($this->promotions['BP'] as $promotion) {
+				if ($promotion['codice_articolo'] == $request['articleCode']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '90'];
+					break;
+				}
+			}
+		}
+		if ($type == '0034') {
+			foreach ($this->promotions['BT'] as $promotion) {
+				if ($promotion['parametro_03'] == '1') {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '77'];
+					break;
+				}
+			}
+		}
+		if ($type == '0481' && $this->storeType == '0') {
+			foreach ($this->promotions['BJ'] as $promotion) {
+				if ($request['articleCode'] == $promotion['codice_articolo']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '89'];
+					break;
+				}
+			}
+		}
+		if ($type == '0481' && $this->storeType == '2') {
+			foreach ($this->promotions['MP'] as $promotion) {
+				if ($request['benefitBarcode'] == "" || !key_exists($request['benefitBarcode'], $this->barcodeMenu)) {
+					$request['benefitBarcode'] = "9770110000054";
+				}
+
+				if ($this->barcodeMenu[$request['benefitBarcode']] == $promotion['codice_articolo']) {
+					$codes = [
+						'campaignCode' => $promotion['codice_campagna'],
+						'promotionCode' => $promotion['codice_promozione'],
+						'movementCode' => '13'];
+					break;
+				}
+			}
+		}
+		if ($type == '0061') {
+			if ($request['category'] == 1 || $this->storeType == 2) {
+				foreach ($this->promotions['MT'] as $promotion) {
+					if ($promotion['parametro_02'] == 1) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '51'];
+						break;
+					}
+				}
+			} else {
+				foreach ($this->promotions['MT'] as $promotion) {
+					if ($request['category'] == $promotion['parametro_02']) {
+						$codes = [
+							'campaignCode' => $promotion['codice_campagna'],
+							'promotionCode' => $promotion['codice_promozione'],
+							'movementCode' => '51'];
+						break;
+					}
+				}
+			}
+		}
+
 		return $codes;
 	}
 }

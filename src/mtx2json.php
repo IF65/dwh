@@ -20,12 +20,12 @@ function getRawData(string $store, string $ddate): array
 		/** carico le transazioni valide */
 		$stmt = "	select 
 	       			store, ddate, reg, trans, transstep, ttime, userno, hour, 
-	       			recordtype, recordcode1, recordcode2, recordcode3, userno, misc, data, 
+	       			recordtype, recordcode1, recordcode2, recordcode3, userno, misc, data,     
 	       			saleid, taxcode, amount, totalamount, totaltaxableamount, taxamount, barcode, 
 	       			quantita quantity, totalpoints, paymentform, actioncode  
 				from mtx.idc 
 				where store = :store and ddate = :ddate and recordcode1 = '1'  and binary recordtype not in ('f','b','u','X')
-				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '003' and trans = 4504*/
+				      and ((binary recordtype = 'm' and misc like '00:%') or binary recordtype <> 'm') /*and reg = '022' and trans = 5145*/
 				order by store, ddate, reg, trans, transstep";
 		$h_query = $pdo->prepare($stmt);
 		$h_query->execute([':store' => $store, ':ddate' => $ddate]);
@@ -60,11 +60,14 @@ function getRawData(string $store, string $ddate): array
 
 function getData(string $store, string $ddate): string
 {
+	$config = Config::Init();
+
 	$transactions = getRawData($store, $ddate);
 
 	foreach ($transactions as $id => $transaction) {
 		/** DATI DI TESTATA/PIEDE SCONTRINO */
 		$dc[$id]['fidelityCard'] = '';
+		$dc[$id]['category'] = '';
 		$dc[$id]['benefits'] = [];
 		foreach ($transaction as $row) {
 			if ($row['recordtype'] == 'H') {
@@ -81,6 +84,10 @@ function getData(string $store, string $ddate): string
 
 			if ($row['recordtype'] == 'k') {
 				$dc[$id]['fidelityCard'] = $row['barcode'];
+				$dc[$id]['category'] = $row['userno'] * 1;
+				if ($dc[$id]['category'] == 4 || $dc[$id]['category'] == 5) {
+					$dc[$id]['category'] = 1;
+				}
 			}
 		}
 
@@ -615,11 +622,11 @@ function getData(string $store, string $ddate): string
 						$details = [];
 						for ($j = $i - 1; $j >= 0; $j--) {
 							if ($transaction[$j]['recordtype'] == 'd' &&
-								preg_match('/(?:^\s*(\d+)\s*$|\:\s*(\d+)\s*$)/', $transaction[$j]['misc'], $matches1) &&
+								preg_match('/(?:^\s*(\d+)\s*$|\:\s*(\d+)\s*$|^()$)/', $transaction[$j]['misc'], $matches1) &&
 								preg_match('/(^(?:\+|\-)\d{4}).*(\d{9})$/', $transaction[$j]['data'], $matches2)) {
 								$details[] = [
 									'id' => uniqid(),
-									'barcode' => ($matches1[1] != '') ? $matches1[1] : $matches1[2],
+									'barcode' => ($matches1[1] != '') ? $matches1[1] : (($matches1[2] != '') ? $matches1[2] : $matches1[3]),
 									'quantity' => $matches2[1] * 1,
 									'amount' => $matches2[2] / 100
 								];
@@ -815,7 +822,7 @@ function getData(string $store, string $ddate): string
 			$discounts = [];
 			for ($i = count($transaction) - 2; $i >= 0; $i--) {
 				if ($transaction[$i]['recordtype'] == 'D' && $transaction[$i]['recordcode3'] == '7' && $transaction[$i + 1]['recordtype'] == 'w') {
-					if (preg_match('/\s+(\d*)$/', $transaction[$i + 1]['misc'], $matches)) {
+					if (preg_match('/\s*(\d*)$/', $transaction[$i + 1]['misc'], $matches)) {
 						$discount = [
 							'type' => '0503',
 							'amount' => $transaction[$i]['totalamount'] * 1,
@@ -896,87 +903,86 @@ function getData(string $store, string $ddate): string
 		}
 
 		/** 0061 - SCONTO TRANSAZIONALE CON RECORD M */
-		if (true) {
-			$discounts = [];
-			for ($i = count($transaction) - 2; $i >= 0; $i--) {
-				if ($transaction[$i]['recordtype'] == 'D' && $transaction[$i + 1]['recordtype'] == 'm') {
-					if (preg_match('/:0061\-(.*)\s+$/', $transaction[$i + 1]['misc'], $matches)) {
-						$discount = [
-							'type' => '0061',
-							'amount' => $transaction[$i]['totalamount'] * 1,
-							'promotionNumber' => $matches[1]
+		$discounts = [];
+		for ($i = count($transaction) - 2; $i >= 0; $i--) {
+			if ($transaction[$i]['recordtype'] == 'D' && $transaction[$i + 1]['recordtype'] == 'm') {
+				if (preg_match('/:0061\-(.*)\s+$/', $transaction[$i + 1]['misc'], $matches)) {
+					$discount = [
+						'type' => '0061',
+						'amount' => $transaction[$i]['totalamount'] * 1,
+						'promotionNumber' => $matches[1]
+					];
+					$details = [];
+					$calculationBase = 0;
+					foreach ($sales as $sale) {
+						$details[] = [
+							'id' => uniqid(),
+							'barcode' => $sale['barcode'],
+							'quantity' => $sale['quantity'],
+							'amount' => $sale['totalamount'],
+							'totalnetamount' => $sale['totalnetamount'],
+							'saleid' => $sale['saleid'],
 						];
-						$details = [];
-						$calculationBase = 0;
-						foreach ($sales as $sale) {
-							$details[] = [
-								'id' => uniqid(),
-								'barcode' => $sale['barcode'],
-								'quantity' => $sale['quantity'],
-								'amount' => $sale['totalamount'],
-								'totalnetamount' => $sale['totalnetamount'],
-								'saleid' => $sale['saleid'],
-							];
-							$calculationBase += $sale['totalnetamount'];
-						}
-
-						/** stabilisco quale sia l'elemento con importo maggiore */
-						$idMaxAmount = 0;
-						for ($j = 0; $j < count($sales); $j++) {
-							if ($sales[$j]['totalnetamount'] > $sales[$idMaxAmount]['totalnetamount']) {
-								$idMaxAmount = $j;
-							}
-						}
-
-						/** calcolo la quota parte di sconto per ogni vendita */
-						for ($j = 0; $j < count($details); $j++) {
-							$details[$j]['share'] = round($details[$j]['totalnetamount'] / $calculationBase * $discount['amount'], 2);
-						}
-
-						/** cerco l'eventuale delta dovuto agli arrotondamenti */
-						$delta = $discount['amount'];
-						for ($j = 0; $j < count($details); $j++) {
-							$delta = round($delta - $details[$j]['share'], 2);
-						}
-						$details[$idMaxAmount]['share'] = round($details[$idMaxAmount]['share'] + $delta, 2);
-
-						$discount['details'] = $details;
-						$discounts[] = $discount;
+						$calculationBase += $sale['totalnetamount'];
 					}
 
+					/** stabilisco quale sia l'elemento con importo maggiore */
+					$idMaxAmount = 0;
+					for ($j = 0; $j < count($sales); $j++) {
+						if ($sales[$j]['totalnetamount'] > $sales[$idMaxAmount]['totalnetamount']) {
+							$idMaxAmount = $j;
+						}
+					}
+
+					/** calcolo la quota parte di sconto per ogni vendita */
+					for ($j = 0; $j < count($details); $j++) {
+						$details[$j]['share'] = round($details[$j]['totalnetamount'] / $calculationBase * $discount['amount'], 2);
+					}
+
+					/** cerco l'eventuale delta dovuto agli arrotondamenti */
+					$delta = $discount['amount'];
+					for ($j = 0; $j < count($details); $j++) {
+						$delta = round($delta - $details[$j]['share'], 2);
+					}
+					$details[$idMaxAmount]['share'] = round($details[$idMaxAmount]['share'] + $delta, 2);
+
+					$discount['details'] = $details;
+					$discounts[] = $discount;
 				}
 			}
+		}
 
-			foreach ($discounts as $id_discount => $discount) {
-				for ($k = 0; $k < count($discount['details']); $k++) {
-					for ($i = count($sales) - 1; $i >= 0; $i--) {
-						if ($sales[$i]['saleid'] == $discount['details'][$k]['saleid']) {
-							if (!key_exists('0061', $sales[$i]['benefits'])) {
-								$sales[$i]['benefits']['0061'] = [];
-							}
-							$sales[$i]['benefits']['0061'][] = [
-								'amount' => $discount['details'][$k]['share'],
-								'promotionNumber' => $discount['promotionNumber']
-							];
+		foreach ($discounts as $id_discount => $discount) {
+			for ($k = 0; $k < count($discount['details']); $k++) {
+				for ($i = count($sales) - 1; $i >= 0; $i--) {
+					if ($sales[$i]['saleid'] == $discount['details'][$k]['saleid']) {
+						if (!key_exists('0061', $sales[$i]['benefits'])) {
+							$sales[$i]['benefits']['0061'] = [];
 						}
+						$sales[$i]['benefits']['0061'][] = [
+							'amount' => $discount['details'][$k]['share'],
+							'promotionNumber' => $discount['promotionNumber']
+						];
 					}
 				}
 			}
+		}
 
-			/* CALCOLO IL VALORE NETTO DELLA VENDITA */
-			for ($i = 0; $i < count($sales); $i++) {
-				$sales[$i]['totalnetamount'] = $sales[$i]['totalamount'];
-				if (count($sales[$i]['benefits'])) {
-					foreach ($sales[$i]['benefits'] as $benefitType) {
-						foreach ($benefitType as $benefit) {
-							if (key_exists('amount', $benefit)) {
-								$sales[$i]['totalnetamount'] += $benefit['amount'];
-							}
+		/* CALCOLO IL VALORE NETTO DELLA VENDITA */
+		for ($i = 0; $i < count($sales); $i++) {
+			$sales[$i]['totalnetamount'] = $sales[$i]['totalamount'];
+			if (count($sales[$i]['benefits'])) {
+				foreach ($sales[$i]['benefits'] as $benefitType) {
+					foreach ($benefitType as $benefit) {
+						if (key_exists('amount', $benefit)) {
+							$sales[$i]['totalnetamount'] += $benefit['amount'];
 						}
 					}
 				}
 			}
 		}
+
+
 
 		/** 0034 - PUNTI TRANSAZIONE */
 		if (true) {
@@ -1003,28 +1009,34 @@ function getData(string $store, string $ddate): string
 
 		$dc[$id]['sales'] = $sales;
 
-		foreach ($dc as $idTransaction => $transaction) {
-			foreach ($transaction['sales'] as $idSale => $sale) {
-				if ($sale['totalamount'] < 0 && ($sale['recordcode2'] == '7' || $sale['recordcode2'] == '8')) {
-					for ($i = 0; $i < $idSale; $i++) {
-						if ($dc[$idTransaction]['sales'][$i]['saleid'] == $dc[$idTransaction]['sales'][$idSale]['saleid']) {
-							$dc[$idTransaction]['sales'][$i]['status'] = 'deleted';
-							$dc[$idTransaction]['sales'][$idSale]['status'] = 'deleted';
-						}
+		foreach ($dc[$id]['sales'] as $idSale => $sale) {
+			if ($sale['totalamount'] < 0 && ($sale['recordcode2'] == '7' || $sale['recordcode2'] == '8')) {
+				for ($i = 0; $i < $idSale; $i++) {
+					if ($dc[$id]['sales'][$i]['saleid'] == $dc[$id]['sales'][$idSale]['saleid']) {
+						$dc[$id]['sales'][$i]['status'] = 'deleted';
+						$dc[$id]['sales'][$idSale]['status'] = 'deleted';
 					}
 				}
 			}
 		}
 
-		foreach ($dc as $idTransaction => $transaction) {
-			for ($i = count($dc[$idTransaction]['sales']) - 1; $i >= 0; $i--) {
-				if (key_exists('status', $dc[$idTransaction]['sales'][$i])) {
-					if ($dc[$idTransaction]['sales'][$i]['status'] == 'deleted') {
-						array_splice($dc[$idTransaction]['sales'], $i, 1);
-					}
+		for ($i = count($dc[$id]['sales']) - 1; $i >= 0; $i--) {
+			if (key_exists('status', $dc[$id]['sales'][$i])) {
+				if ($dc[$id]['sales'][$i]['status'] == 'deleted') {
+					array_splice($dc[$id]['sales'], $i, 1);
 				}
 			}
 		}
+
+		$totalControlAmount = 0;
+		foreach ($dc[$id]['sales'] as $idSale => $sale) {
+			$totalControlAmount += $sale['totalnetamount'];
+		}
+		$wrongTransaction = false;
+		if (round($dc[$id]['totalamount'] - $totalControlAmount, 2) != 0.00) {
+			$wrongTransaction = true;
+		}
+		$dc[$id]['wrongTransaction'] = $wrongTransaction;
 
 	}
 

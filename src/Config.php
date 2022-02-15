@@ -6,6 +6,8 @@ class Config
 {
 	static $init = null;
 
+	public $oldDwhType = true;
+
 	public $archivi = [
 		"host" => "",
 		"user" => "",
@@ -17,6 +19,11 @@ class Config
 		"password" => ""
 	];
 	public $cm = [
+		"host" => "",
+		"user" => "",
+		"password" => ""
+	];
+	public $cm_old = [
 		"host" => "",
 		"user" => "",
 		"password" => ""
@@ -66,6 +73,12 @@ class Config
 				$this->cm['host'] = $setup['cm']['host'];
 				$this->cm['user'] = $setup['cm']['user'];
 				$this->cm['password'] = $setup['cm']['password'];
+			}
+
+			if (key_exists('cm_old', $setup)) {
+				$this->cm_old['host'] = $setup['cm_old']['host'];
+				$this->cm_old['user'] = $setup['cm_old']['user'];
+				$this->cm_old['password'] = $setup['cm_old']['password'];
 			}
 
 			if (key_exists('quadrature', $setup)) {

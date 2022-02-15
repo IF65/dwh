@@ -1,6 +1,7 @@
 <?php
 
-$filePath = realpath(__DIR__) . "/dc/invio_004/";
+$filePath = realpath(__DIR__) . "/dc/";
+//$filePath = "/Users/if65/Desktop/Invio Cosimo/invio_05/";
 
 $fileList = scandir($filePath);
 
@@ -50,6 +51,9 @@ foreach ($fileList as $file) {
 						$totaleCalcolato -= $m[1] . '.' . $m[2];
 					}
 					if (preg_match("/^.{21}1055.{18}(\d{7})(\d{2})/", $row, $m)) {
+						$totaleCalcolato -= $m[1] . '.' . $m[2];
+					}
+					if (preg_match("/^.{21}1051.{18}(\d{7})(\d{2})/", $row, $m)) {
 						$totaleCalcolato -= $m[1] . '.' . $m[2];
 					}
 					if (preg_match("/^.{21}1050.{18}(\d{7})(\d{2})/", $row, $m)) {
