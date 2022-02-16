@@ -38,22 +38,17 @@ class Promotions
 		"9770110000207" => "9891192", //20-MENU 20 2021
 	];
 
+	private $promotionRows;
 	private $promotions;
 
-	public function __construct(string $store, string $ddate)
+	public function __construct(string $store, string $startingDate, string $endingDate)
 	{
 		$this->config = Config::Init();
 
 		try {
-			if ($this->config->oldDwhType) {
-				$this->user = $this->config->cm_old['user'];
-				$this->password = $this->config->cm_old['password'];
-				$this->host = $this->config->cm_old['host'];
-			} else {
-				$this->user = $this->config->cm['user'];
-				$this->password = $this->config->cm['password'];
-				$this->host = $this->config->cm['host'];
-			}
+			$this->user = $this->config->cm['user'];
+			$this->password = $this->config->cm['password'];
+			$this->host = $this->config->cm['host'];
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 			$this->pdo = new PDO($connectionString, $this->user, $this->password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
@@ -61,6 +56,7 @@ class Promotions
 			$stmt = "	select codice store, 0 storeType from archivi.negozi where societa in (02,05)
 						union all
 						select codiceTcPos store, 2 storeType from archivi.negozi where societa in (02,05) and codiceTcPos <> ''";
+
 			$h_query = $this->pdo->prepare($stmt);
 			$h_query->execute();
 			$rows = $h_query->fetchAll(PDO::FETCH_ASSOC);
@@ -72,36 +68,61 @@ class Promotions
 				}
 			}
 
-			$this->loadPromotions($store, $ddate);
+			$this->loadPromotions($store, $startingDate, $endingDate);
 
 		} catch (PDOException $e) {
 			die($e->getMessage());
 		}
 	}
 
-	private function loadPromotions(string $store, string $ddate)
+	private function loadPromotions(string $store, string $startingDate, string $endingDate)
 	{
 		try {
 			/** carico la le promozioni valide */
-			$stmt = "	select p.codice_campagna, p.codice_promozione, p.descrizione, p.tipo, p.codice_articolo, 
+			$stmt = '';
+			if ($this->config->oldDwhType) {
+				$stmt = "	select p.codice_campagna, p.codice_promozione, p.descrizione, p.tipo, p.data_inizio, p.data_fine, p.codice_articolo, 
 	       					p.codice_reparto, p.parametro_01, p.parametro_02, p.parametro_03 
 						from cm.promozioni as p join cm.negozi_promozioni as n on p.codice_promozione = n.promozione_codice 
-						where data_inizio <= :ddate and data_fine >= :ddate and n.`negozio_codice`= :store";
+						where data_inizio <= :startingDate and data_fine >= :endingDate and n.`negozio_codice`= :store";
+			} else {
+				$stmt = "	select p.codice_campagna, p.codice_promozione, p.descrizione, p.tipo, p.data_inizio, p.data_fine, p.codice_articolo, 
+	       					p.codice_reparto, p.parametro_01, p.parametro_02, p.parametro_03 
+						from cm.promozioni_new as p join cm.negozi_promozioni_new as n on p.codice_promozione = n.promozione_codice 
+						where data_inizio <= :startingDate and data_fine >= :endingDate and n.`negozio_codice`= :store";
+			}
 			$h_query = $this->pdo->prepare($stmt);
-			$h_query->execute([':store' => $store, ':ddate' => $ddate]);
-			$rows = $h_query->fetchAll(PDO::FETCH_ASSOC);
+			$h_query->execute([':store' => $store, ':startingDate' => $startingDate, ':endingDate' => $endingDate]);
+			$this->promotionRows = $h_query->fetchAll(PDO::FETCH_ASSOC);
 
 			/** indicizzo per tipo promozione */
-			$this->promotions = [];
+			/*$this->promotions = [];
 			foreach ($rows as $row) {
 				if (!key_exists($row['tipo'], $this->promotions)) {
 					$this->promotions[$row['tipo']] = [];
 				}
 				$this->promotions[$row['tipo']][] = $row;
-			}
+			}*/
 		} catch (PDOException $e) {
 			echo "Errore: " . $e->getMessage();
 			die();
+		}
+	}
+
+	public function loadActivePromotions(string $ddate) {
+		$rows = [];
+		foreach ($this->promotionRows as $row) {
+			if ($row['data_inizio'] <= $ddate and $row['data_fine'] >= $ddate) {
+				$rows[] = $row;
+			}
+		}
+
+		$this->promotions = [];
+		foreach ($rows as $row) {
+			if (!key_exists($row['tipo'], $this->promotions)) {
+				$this->promotions[$row['tipo']] = [];
+			}
+			$this->promotions[$row['tipo']][] = $row;
 		}
 	}
 

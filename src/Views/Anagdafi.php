@@ -21,15 +21,9 @@ class Anagdafi
 		try {
 			$this->config = Config::Init();
 
-			if ($this->config->oldDwhType) {
-				$this->user = $this->config->cm_old['user'];
-				$this->password = $this->config->cm_old['password'];
-				$this->host = $this->config->cm_old['host'];
-			} else {
-				$this->user = $this->config->cm['user'];
-				$this->password = $this->config->cm['password'];
-				$this->host = $this->config->cm['host'];
-			}
+			$this->user = $this->config->cm['user'];
+			$this->password = $this->config->cm['password'];
+			$this->host = $this->config->cm['host'];
 
 			$connectionString = sprintf("mysql:host=%s", $this->host);
 
