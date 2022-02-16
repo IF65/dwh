@@ -37,19 +37,20 @@ function getRawData(string $store, string $ddate): array
 		$id_old = '';
 		$transaction = [];
 		$transactions = [];
-		foreach ($rows as $row) {
-			$id = $row['store'] . str_replace('-', '', $row['ddate']) . $row['reg'] . str_pad($row['trans'], 4, '0', STR_PAD_LEFT);
-			if ($id != $id_old) {
-				if (count($transaction)) {
-					$transactions[$id_old] = $transaction;
+		if (count($rows) > 0) {
+			foreach ($rows as $row) {
+				$id = $row['store'] . str_replace('-', '', $row['ddate']) . $row['reg'] . str_pad($row['trans'], 4, '0', STR_PAD_LEFT);
+				if ($id != $id_old) {
+					if (count($transaction)) {
+						$transactions[$id_old] = $transaction;
+					}
+					$id_old = $id;
+					$transaction = [];
 				}
-				$id_old = $id;
-				$transaction = [];
+				$transaction[] = $row;
 			}
-			$transaction[] = $row;
+			$transactions[$id_old] = $transaction;
 		}
-		$transactions[$id_old] = $transaction;
-
 		return $transactions;
 
 	} catch (PDOException $e) {
@@ -62,8 +63,9 @@ function getData(string $store, string $ddate): string
 {
 	$config = Config::Init();
 
-	$transactions = getRawData($store, $ddate);
+	$dc = [];
 
+	$transactions = getRawData($store, $ddate);
 	foreach ($transactions as $id => $transaction) {
 		/** DATI DI TESTATA/PIEDE SCONTRINO */
 		$dc[$id]['fidelityCard'] = '';
